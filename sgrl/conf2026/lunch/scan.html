@@ -146,6 +146,9 @@
   }
 
   async function scanLoop() {
+
+  const backend = "https://lunch.arun-babu.com";
+
     if (!scanning) return;
 
     try {
@@ -160,7 +163,7 @@
 
         try {
           const res = await fetch(
-            "/" +
+            backend + "/" +
             encodeURIComponent(apikey) +
             "/set/" +
             encodeURIComponent(day) +

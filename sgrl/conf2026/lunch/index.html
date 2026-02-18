@@ -136,6 +136,8 @@
   const input = document.getElementById("apikey");
   const error = document.getElementById("error");
 
+  const backend = "https://lunch.arun-babu.com";
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     error.style.display = "none";
@@ -147,7 +149,7 @@
 
     try {
       const res = await fetch(
-        "/" + encodeURIComponent(apikey) + "/login?day=" + encodeURIComponent(day),
+        backend + "/" + encodeURIComponent(apikey) + "/login?day=" + encodeURIComponent(day),
         { method: "GET", cache: "no-store" }
       );
 
