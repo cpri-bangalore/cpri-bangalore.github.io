@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Login</title>
+
+  <!-- Mobile-friendly -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      margin: 1rem;
+      padding: 1.5rem;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin: 0 0 1rem 0;
+      text-align: center;
+      font-size: 1.4rem;
+    }
+
+    .field {
+      margin-top: 1rem;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      padding: 0.9rem;
+      font-size: 1.1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #007aff;
+    }
+
+    .radio-group {
+      margin-top: 1rem;
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .radio-group label {
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 1.5rem;
+      padding: 1rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      background: #007aff;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:active {
+      background: #005fd1;
+    }
+
+    .error {
+      display: none;
+      margin-top: 1rem;
+      color: #c00;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>Enter API Key</h1>
+
+    <form id="login-form">
+
+      <div class="field">
+        <input
+          type="password"
+          id="apikey"
+          placeholder="API key"
+          required
+          autofocus
+          autocomplete="off"
+        >
+      </div>
+
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="day" value="day1" checked>
+          Day 1
+        </label>
+
+        <label>
+          <input type="radio" name="day" value="day2">
+          Day 2
+        </label>
+      </div>
+
+      <button type="submit">Continue</button>
+    </form>
+
+    <div id="error" class="error">
+      Invalid API key
+    </div>
+  </div>
+
+<script>
+  const form  = document.getElementById("login-form");
+  const input = document.getElementById("apikey");
+  const error = document.getElementById("error");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    error.style.display = "none";
+
+    const apikey = input.value.trim();
+    if (!apikey) return;
+
+    const day = document.querySelector('input[name="day"]:checked').value;
+
+    try {
+      const res = await fetch(
+        "/" + encodeURIComponent(apikey) + "/login?day=" + encodeURIComponent(day),
+        { method: "GET", cache: "no-store" }
+      );
+
+      if (res.status === 200) {
+        // store for this tab/session
+        sessionStorage.setItem("apikey", apikey);
+        sessionStorage.setItem("day", day);
+
+        window.location.replace("/scan.html");
+      } else {
+        error.style.display = "block";
+        input.focus();
+        input.select();
+      }
+    } catch (err) {
+      error.textContent = "Network error";
+      error.style.display = "block";
+    }
+  });
+</script>
+
+</body>
+</html>
+
