@@ -11,6 +11,12 @@
       box-sizing: border-box;
     }
 
+    .unselectable {
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none;    /* IE 10+ */
+    user-select: none;        /* Standard */
+}
+
     body {
       margin: 0;
       background: black;
@@ -87,7 +93,7 @@
   <button id="nextBtn">Next guest</button>
 </div>
 
-<div id="status" class="status">Point camera at QR code</div>
+<div id="status" class="status unselectable">Point camera at QR code</div>
 
 <script>
 (async () => {
@@ -131,7 +137,7 @@
   }
 
   async function startScanning() {
-    status.className = "status";
+    status.className = "status unselectable";
     status.textContent = "Point camera at QR code";
     actions.style.display = "none";
     scanning = true;
