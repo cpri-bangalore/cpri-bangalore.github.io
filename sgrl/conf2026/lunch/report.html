@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>All Guests</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f2f2f2;
+      padding: 1rem;
+    }
+
+    .card {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      border-radius: 12px;
+      padding: 1.2rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      text-align: center;
+      font-size: 1.4rem;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.9rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      background: #007aff;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:active {
+      background: #005fd1;
+    }
+
+    .status {
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.95rem;
+      color: #555;
+    }
+
+    .error {
+      color: #c00;
+      text-align: center;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 0.6rem;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+      word-break: break-all;
+    }
+
+    th {
+      background: #fafafa;
+      font-weight: 600;
+    }
+
+    tfoot td {
+      font-weight: 700;
+      background: #f5f5f5;
+      border-top: 2px solid #ddd;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>All Guests</h1>
+
+  <button id="loadBtn">Load Data</button>
+
+  <div id="status" class="status"></div>
+  <div id="error" class="error"></div>
+
+  <table id="table" style="display:none;">
+    <thead>
+      <tr>
+        <th>Guest</th>
+        <th>Day 1</th>
+        <th>Day 2</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+    <tfoot>
+      <tr>
+        <td id="totalGuests">TOTAL</td>
+        <td id="totalDay1">0</td>
+        <td id="totalDay2">0</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<script>
+(() => {
+  const apikey = sessionStorage.getItem("apikey");
+  if (!apikey) {
+    window.location.replace("/");
+    return;
+  }
+
+  const loadBtn    = document.getElementById("loadBtn");
+  const status     = document.getElementById("status");
+  const errorBox   = document.getElementById("error");
+  const table      = document.getElementById("table");
+  const tbody      = document.getElementById("tbody");
+  const totalDay1  = document.getElementById("totalDay1");
+  const totalDay2  = document.getElementById("totalDay2");
+  const totalGuest = document.getElementById("totalGuests");
+
+  async function loadData() {
+    status.textContent = "Loading…";
+    errorBox.style.display = "none";
+    table.style.display = "none";
+    tbody.innerHTML = "";
+
+    let sumDay1 = 0;
+    let sumDay2 = 0;
+
+    try {
+      const res = await fetch(
+        "/" + encodeURIComponent(apikey) + "/getall",
+        { method: "GET", cache: "no-store" }
+      );
+
+      if (!res.ok) {
+        let message = "Failed to load data";
+        try {
+          const data = await res.json();
+          message = data?.error?.message || message;
+        } catch (_) {}
+        throw new Error(message);
+      }
+
+      const data = await res.json();
+      const rows = data?.result;
+
+      if (!Array.isArray(rows)) {
+        throw new Error("Invalid response format");
+      }
+
+      if (rows.length === 0) {
+        status.textContent = "No data available";
+        return;
+      }
+
+      for (const row of rows) {
+        const tr = document.createElement("tr");
+
+        const tdGuest = document.createElement("td");
+        tdGuest.textContent = row.guest ?? "";
+        tr.appendChild(tdGuest);
+
+        const d1 = Number(row.day1_count) || 0;
+        const d2 = Number(row.day2_count) || 0;
+
+        sumDay1 += d1;
+        sumDay2 += d2;
+
+        const tdDay1 = document.createElement("td");
+        tdDay1.textContent = d1;
+        tr.appendChild(tdDay1);
+
+        const tdDay2 = document.createElement("td");
+        tdDay2.textContent = d2;
+        tr.appendChild(tdDay2);
+
+        tbody.appendChild(tr);
+      }
+
+      totalGuest.textContent = "TOTAL (" + rows.length + ")";
+      totalDay1.textContent  = sumDay1;
+      totalDay2.textContent  = sumDay2;
+
+      status.textContent = rows.length + " guests";
+      table.style.display = "table";
+
+    } catch (err) {
+      status.textContent = "";
+      errorBox.textContent = err.message;
+      errorBox.style.display = "block";
+    }
+  }
+
+  loadBtn.addEventListener("click", loadData);
+})();
+</script>
+
+</body>
+</html>
