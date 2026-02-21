@@ -3,19 +3,16 @@
 <head>
   <meta charset="utf-8">
   <title>Scan</title>
-
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     .unselectable {
-    -webkit-user-select: none; /* Safari */
-    -ms-user-select: none;    /* IE 10+ */
-    user-select: none;        /* Standard */
-}
+      -webkit-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
 
     body {
       margin: 0;
@@ -82,6 +79,34 @@
     .actions button:active {
       background: #005fd1;
     }
+
+    .manual-entry {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      right: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 10;
+    }
+
+    .manual-entry input {
+      flex: 1;
+      padding: 0.8rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
+    }
+
+    .manual-entry button {
+      padding: 0.8rem 1rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
+      background: #007aff;
+      color: white;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -89,20 +114,38 @@
 <video id="video" autoplay playsinline></video>
 <div class="overlay"></div>
 
+<div class="manual-entry">
+  <input
+    id="manualInput"
+    type="text"
+    placeholder="Enter QR manually"
+    autocapitalize="off"
+    autocomplete="off"
+    autocorrect="off"
+    spellcheck="false"
+  >
+  <button id="manualSubmit">Submit</button>
+</div>
+
 <div id="actions" class="actions">
   <button id="nextBtn">Next guest</button>
 </div>
 
-<div id="status" class="status unselectable">Point camera at QR code</div>
+<div id="status" class="status unselectable">
+  Point camera at QR code
+</div>
 
 <script>
 (async () => {
-  const video   = document.getElementById("video");
-  const status  = document.getElementById("status");
-  const actions = document.getElementById("actions");
-  const nextBtn = document.getElementById("nextBtn");
+  const backend = "https://lunch.arun-babu.com";
 
-  // 🔐 Load session values
+  const video       = document.getElementById("video");
+  const status      = document.getElementById("status");
+  const actions     = document.getElementById("actions");
+  const nextBtn     = document.getElementById("nextBtn");
+  const manualInput = document.getElementById("manualInput");
+  const manualBtn   = document.getElementById("manualSubmit");
+
   const apikey = sessionStorage.getItem("apikey");
   const day    = sessionStorage.getItem("day");
 
@@ -111,16 +154,13 @@
     return;
   }
 
-  if (!("BarcodeDetector" in window)) {
-    status.textContent = "QR scanning not supported on this browser";
-    status.classList.add("error");
-    return;
-  }
-
-  const detector = new BarcodeDetector({ formats: ["qr_code"] });
-
   let stream   = null;
   let scanning = false;
+  let detector = null;
+
+  if ("BarcodeDetector" in window) {
+    detector = new BarcodeDetector({ formats: ["qr_code"] });
+  }
 
   async function startCamera() {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -136,88 +176,106 @@
     }
   }
 
-  async function startScanning() {
-    status.className = "status unselectable";
-    status.textContent = "Point camera at QR code";
-    actions.style.display = "none";
-    scanning = true;
+  async function sendCode(qrcode) {
+    status.className = "status";
+    status.textContent = "Sending...";
 
-    await startCamera();
-    scanLoop();
-  }
+    try {
+      const res = await fetch(
+        backend + "/" +
+        encodeURIComponent(apikey) +
+        "/set/" +
+        encodeURIComponent(day) +
+        "/" +
+        encodeURIComponent(qrcode),
+        { method: "GET", cache: "no-store" }
+      );
 
-  function stopScanning() {
-    scanning = false;
-    stopCamera();
+      if (!res.ok) {
+        let message = "Scan failed";
+        try {
+          const data = await res.json();
+          message = data?.error?.message || message;
+        } catch (_) {}
+        throw new Error(message);
+      }
+
+      status.textContent = "✔ Scan successful";
+      status.classList.add("success");
+      actions.style.display = "block";
+      manualInput.value = "";
+      stopCamera();
+
+    } catch (err) {
+      status.textContent = err.message || "Invalid QR";
+      status.classList.add("error");
+
+      // ✅ Autofocus after error
+      manualInput.focus();
+      manualInput.select();
+
+      setTimeout(startScanning, 1500);
+    }
   }
 
   async function scanLoop() {
-
-  const backend = "https://lunch.arun-babu.com";
-
-    if (!scanning) return;
+    if (!scanning || !detector) return;
 
     try {
       const codes = await detector.detect(video);
       if (codes.length > 0) {
         scanning = false;
-
-        const qrcode = codes[0].rawValue;
-        status.textContent = "QR detected, sending…";
-
-        stopCamera();
-
-        try {
-          const res = await fetch(
-            backend + "/" +
-            encodeURIComponent(apikey) +
-            "/set/" +
-            encodeURIComponent(day) +
-            "/" +
-            encodeURIComponent(qrcode),
-            { method: "GET", cache: "no-store" }
-          );
-
-          if (!res.ok) {
-            let message = "Scan failed";
-            try {
-              const data = await res.json();
-              message = data?.error?.message || message;
-            } catch (_) {}
-
-            throw new Error(message);
-          }
-
-          // ✅ Success
-          status.textContent = "✔ Scan successful";
-          status.classList.add("success");
-          actions.style.display = "block";
-          return;
-
-        } catch (err) {
-          status.textContent = err.message || "Invalid QR";
-          status.classList.add("error");
-
-          setTimeout(startScanning, 1800);
-          return;
-        }
+        await sendCode(codes[0].rawValue);
+        return;
       }
-    } catch (_) {
-      // ignore frame errors
-    }
+    } catch (_) {}
 
     requestAnimationFrame(scanLoop);
   }
 
+  async function startScanning() {
+    actions.style.display = "none";
+    status.className = "status unselectable";
+    status.textContent = "Point camera at QR code";
+
+    if (!detector) {
+      status.textContent = "QR scanning not supported. Use manual entry.";
+      status.classList.add("error");
+      manualInput.focus();
+      return;
+    }
+
+    scanning = true;
+    await startCamera();
+    scanLoop();
+  }
+
+  async function submitManual() {
+    const value = manualInput.value.trim();
+    if (!value) return;
+
+    scanning = false;
+    stopCamera();
+    await sendCode(value);
+  }
+
+  manualBtn.addEventListener("click", submitManual);
+
+  manualInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitManual();
+    }
+  });
+
   nextBtn.addEventListener("click", () => {
+    manualInput.value = "";
     startScanning();
   });
 
-  // Start immediately
   startScanning();
 })();
 </script>
 
 </body>
 </html>
-
