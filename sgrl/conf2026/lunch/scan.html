@@ -211,8 +211,11 @@
       status.classList.add("error");
 
       // ✅ Autofocus after error
+	if (manualInput.value !== "")
+	    {
       manualInput.focus();
       manualInput.select();
+	}	  
 
       setTimeout(startScanning, 1500);
     }
