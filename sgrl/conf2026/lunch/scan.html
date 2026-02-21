@@ -204,18 +204,14 @@
       status.classList.add("success");
       actions.style.display = "block";
       manualInput.value = "";
+      manualInput.blur();
       stopCamera();
 
     } catch (err) {
       status.textContent = err.message || "Invalid QR";
       status.classList.add("error");
 
-      // ✅ Autofocus after error
-	if (manualInput.value !== "")
-	    {
-      manualInput.focus();
-      manualInput.select();
-	}	  
+      manualInput.blur();
 
       setTimeout(startScanning, 1500);
     }
